@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI          # 使用这个替换
 from langchain.agents import create_agent
 from src.runtime import Context
 from src.memory import checkpointer
-from src.prompt import SYSTEM_PROMPT
+from src.prompt import build_system_prompt
 from src.tools import get_tools
 
 model = ChatOpenAI(
@@ -19,10 +19,12 @@ model = ChatOpenAI(
 #     model_kwargs={"base_url": "http://127.0.0.1:1234/v1", "api_key": "not-needed"}
 # )
 
+tools = get_tools()
+
 agent = create_agent(
     model=model,
-    system_prompt=SYSTEM_PROMPT,
-    tools=get_tools(),
+    system_prompt=build_system_prompt(tools=tools),
+    tools=tools,
     context_schema=Context,
     checkpointer=checkpointer
 )

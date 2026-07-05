@@ -10,7 +10,7 @@ and a registry-based tool loading system.
 - `src/agent.py` - builds the LangChain agent.
 - `src/runtime.py` - defines runtime context passed into tools.
 - `src/memory.py` - configures the in-memory LangGraph checkpointer.
-- `src/prompt.py` - stores the system prompt.
+- `src/prompt/` - builds system prompts from independent layers.
 - `src/tools/` - registry-based tool package.
 
 ## Tool Registration
@@ -29,6 +29,25 @@ To add a new tool:
 
 The package auto-discovers local tool modules when `get_tools()` is called, so
 `src/agent.py` does not need to change when tools are added or removed.
+
+## Prompt Layers
+
+System prompts are composed from independent modules in `src/prompt/`:
+
+- `base.py` - `CORE_PROMPT` and `DOMAIN_PROMPT`.
+- `capabilities.py` - tool, skill, and MCP prompt layer rendering.
+- `build.py` - final `build_system_prompt()` composition.
+- `__init__.py` - stable public prompt imports.
+
+`src/agent.py` builds the prompt with the same tool list passed into the agent:
+
+```python
+tools = get_tools()
+system_prompt = build_system_prompt(tools=tools)
+```
+
+This keeps concrete tool names out of the base prompt layers while still giving
+the model an up-to-date view of the tools available at runtime.
 
 ## Local Setup
 
