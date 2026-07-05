@@ -4,6 +4,18 @@ llm:
   api_key: "not-needed"
   model: "google/gemma-4-e2b"
   temperature: 0.3
+  context_window_tokens: 8192
 
 agent:
   default_thread_id: "1"
+
+summarization:
+  enabled: true
+  model: "main"
+  trigger:
+    type: "fraction"
+    value: 0.8
+  keep:
+    type: "messages"
+    value: 20
+  trim_tokens_to_summarize: 4000

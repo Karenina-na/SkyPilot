@@ -68,14 +68,36 @@ cp config.example.yaml config.yaml
 ```
 
 `config.yaml` is ignored by Git so local model endpoints and API keys do not get
-committed. The agent reads `config.yaml` at startup and falls back to
-`config.example.yaml` when no local config exists.
+committed. The loader reads `config.example.yaml` as default values, then overlays
+`config.yaml` when it exists. This lets new config fields get safe defaults while
+keeping local overrides private.
 
 The default example points to a local OpenAI-compatible model endpoint:
 
 ```text
 http://127.0.0.1:1234/v1
 ```
+
+### Summarization
+
+Conversation summarization is configured in YAML:
+
+```yaml
+summarization:
+  enabled: true
+  model: "main"
+  trigger:
+    type: "fraction"
+    value: 0.8
+  keep:
+    type: "messages"
+    value: 20
+  trim_tokens_to_summarize: 4000
+```
+
+The default `fraction: 0.8` means summarization runs when conversation history
+approaches 80% of the main model context window. Because fractional triggers need
+a known context window, set `llm.context_window_tokens` for the selected model.
 
 ## Run
 

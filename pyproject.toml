@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "langchain",
+    "langchain-mcp-adapters>=0.3.0",
     "langchain-openai",
     "langgraph",
     "pyyaml",
