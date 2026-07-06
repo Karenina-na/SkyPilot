@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from time import perf_counter
 from typing import Any
@@ -78,6 +78,24 @@ def observe_agent_run(
     )
 
 
+def observe_agent_stream(
+    stream: Iterable[Any],
+    context: Context,
+    *,
+    entrypoint: str,
+    stream_mode: str,
+    redact: bool = True,
+) -> Iterator[Any]:
+    """Yield an agent stream while logging run lifecycle events."""
+    with observe_agent_run(
+        context,
+        entrypoint=entrypoint,
+        stream_mode=stream_mode,
+        redact=redact,
+    ):
+        yield from stream
+
+
 def _context_fields(context: Context | None) -> dict[str, Any]:
     if context is None:
         return {}
@@ -97,4 +115,4 @@ def _duration_ms(started_at: float) -> int:
     return round((perf_counter() - started_at) * 1000)
 
 
-__all__ = ["log_event", "observe_agent_run"]
+__all__ = ["log_event", "observe_agent_run", "observe_agent_stream"]
