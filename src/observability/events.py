@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
+from time import perf_counter
 from typing import Any
 
 from src.observability.logging import get_logger, sanitize_fields
@@ -32,6 +35,49 @@ def log_event(
     )
 
 
+@contextmanager
+def observe_agent_run(
+    context: Context,
+    *,
+    entrypoint: str,
+    stream_mode: str,
+    redact: bool = True,
+) -> Iterator[None]:
+    """Log start/end/error events around one agent run."""
+    started_at = perf_counter()
+    log_event(
+        "agent_run_start",
+        context=context,
+        redact=redact,
+        entrypoint=entrypoint,
+        stream_mode=stream_mode,
+    )
+
+    try:
+        yield
+    except Exception as exc:
+        log_event(
+            "agent_run_error",
+            context=context,
+            level=logging.ERROR,
+            redact=redact,
+            entrypoint=entrypoint,
+            stream_mode=stream_mode,
+            duration_ms=_duration_ms(started_at),
+            error_type=type(exc).__name__,
+        )
+        raise
+
+    log_event(
+        "agent_run_end",
+        context=context,
+        redact=redact,
+        entrypoint=entrypoint,
+        stream_mode=stream_mode,
+        duration_ms=_duration_ms(started_at),
+    )
+
+
 def _context_fields(context: Context | None) -> dict[str, Any]:
     if context is None:
         return {}
@@ -47,4 +93,8 @@ def _context_fields(context: Context | None) -> dict[str, Any]:
     }
 
 
-__all__ = ["log_event"]
+def _duration_ms(started_at: float) -> int:
+    return round((perf_counter() - started_at) * 1000)
+
+
+__all__ = ["log_event", "observe_agent_run"]

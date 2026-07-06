@@ -126,6 +126,26 @@ context ids like `user_id`, `thread_id`, `request_id`, and `run_id`. Logs do not
 include full prompts, full model responses, full tool arguments, memory values,
 or skill file contents by default.
 
+Runtime id semantics:
+
+- `request_id` - one external request or CLI demo operation.
+- `run_id` - one agent execution inside that request.
+- `thread_id` - LangGraph conversation thread used by the checkpointer.
+
+Core events:
+
+| Event | Trigger | Default fields |
+| --- | --- | --- |
+| `agent_run_start` | Agent stream/run begins | `entrypoint`, `stream_mode`, runtime ids |
+| `agent_run_end` | Agent stream/run completes | `duration_ms`, `entrypoint`, `stream_mode`, runtime ids |
+| `agent_run_error` | Agent stream/run raises | `duration_ms`, `error_type`, runtime ids |
+| `model_call_start` | Model call begins | `message_count`, `tool_count`, runtime ids |
+| `model_call_end` | Model call completes | `duration_ms`, `message_count`, runtime ids |
+| `model_call_error` | Model call raises | `duration_ms`, `error_type`, runtime ids |
+| `tool_call_start` | Tool call begins | `tool_name`, `argument_keys`, runtime ids |
+| `tool_call_end` | Tool call completes | `duration_ms`, `status`, `tool_name`, runtime ids |
+| `tool_call_error` | Tool call raises | `duration_ms`, `error_type`, `tool_name`, runtime ids |
+
 ### Summarization
 
 Conversation summarization is configured in YAML:

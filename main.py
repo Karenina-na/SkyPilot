@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from langchain.messages import HumanMessage
 
 from src.agent import agent
+from src.observability import observe_agent_run
 from src.runtime import build_default_context
 
 THREAD_CONFIG = {"configurable": {"thread_id": "demo-thread"}}
@@ -29,23 +30,28 @@ def show_tool_call_updates() -> None:
     """Show agent/tool execution steps without dumping full graph state."""
     print("=== Agent 执行过程 ===\n")
 
-    for chunk in agent.stream(
-        {
-            "messages": [
-                HumanMessage(
-                    content=(
-                        "请先检查 runtime context 是否能传入工具，"
-                        "再调用 create_demo_task 创建任务："
-                        "title='验证 agent 可以发现并调用工具'，priority='high'。"
-                    )
-                )
-            ]
-        },
-        config=THREAD_CONFIG,
-        context=DEMO_CONTEXT,
+    with observe_agent_run(
+        DEMO_CONTEXT,
+        entrypoint="main.show_tool_call_updates",
         stream_mode="updates",
     ):
-        print_update_chunk(chunk)
+        for chunk in agent.stream(
+            {
+                "messages": [
+                    HumanMessage(
+                        content=(
+                            "请先检查 runtime context 是否能传入工具，"
+                            "再调用 create_demo_task 创建任务："
+                            "title='验证 agent 可以发现并调用工具'，priority='high'。"
+                        )
+                    )
+                ]
+            },
+            config=THREAD_CONFIG,
+            context=DEMO_CONTEXT,
+            stream_mode="updates",
+        ):
+            print_update_chunk(chunk)
 
 
 def print_update_chunk(chunk: dict) -> None:
@@ -77,45 +83,57 @@ def show_message_stream() -> None:
     reasoning_started = False
     saw_reasoning = False
     saw_reasoning_block = False
-    for message_chunk, metadata in agent.stream(
-        {"messages": [HumanMessage(content="用一句话说明这个 agent demo 能验证什么。")]},
-        config=THREAD_CONFIG,
-        context=DEMO_CONTEXT,
+    with observe_agent_run(
+        DEMO_CONTEXT,
+        entrypoint="main.show_message_stream",
         stream_mode="messages",
     ):
-        saw_reasoning_block = saw_reasoning_block or _has_reasoning_block(
-            message_chunk
-        )
-        reasoning = _reasoning_text(message_chunk)
-        if reasoning:
-            if not reasoning_started:
-                print("思考流（provider 暴露时显示）:")
-                reasoning_started = True
-            print(reasoning, end="", flush=True)
-            saw_reasoning = True
+        for message_chunk, metadata in agent.stream(
+            {
+                "messages": [
+                    HumanMessage(content="用一句话说明这个 agent demo 能验证什么。")
+                ]
+            },
+            config=THREAD_CONFIG,
+            context=DEMO_CONTEXT,
+            stream_mode="messages",
+        ):
+            saw_reasoning_block = saw_reasoning_block or _has_reasoning_block(
+                message_chunk
+            )
+            reasoning = _reasoning_text(message_chunk)
+            if reasoning:
+                if not reasoning_started:
+                    print("思考流（provider 暴露时显示）:")
+                    reasoning_started = True
+                print(reasoning, end="", flush=True)
+                saw_reasoning = True
 
-        content = _message_text(message_chunk)
-        if not content:
-            continue
+            content = _message_text(message_chunk)
+            if not content:
+                continue
 
-        if not answer_started:
-            if saw_reasoning:
-                print("\n")
-            elif saw_reasoning_block:
-                print(
-                    "思考流（LangChain content_blocks 暴露时显示）: "
-                    "检测到 reasoning block，但 LangChain 未暴露 reasoning 文本。\n"
-                )
-            else:
-                print("思考流（LangChain content_blocks 暴露时显示）: 当前没有 reasoning。\n")
-            print("回复:")
-            answer_started = True
+            if not answer_started:
+                if saw_reasoning:
+                    print("\n")
+                elif saw_reasoning_block:
+                    print(
+                        "思考流（LangChain content_blocks 暴露时显示）: "
+                        "检测到 reasoning block，但 LangChain 未暴露 reasoning 文本。\n"
+                    )
+                else:
+                    print(
+                        "思考流（LangChain content_blocks 暴露时显示）: "
+                        "当前没有 reasoning。\n"
+                    )
+                print("回复:")
+                answer_started = True
 
-        print(content, end="", flush=True)
+            print(content, end="", flush=True)
 
-        if first_metadata is None:
-            first_metadata = metadata
-            first_chunk_type = type(message_chunk).__name__
+            if first_metadata is None:
+                first_metadata = metadata
+                first_chunk_type = type(message_chunk).__name__
 
     print()
     if first_metadata is not None:
