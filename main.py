@@ -5,10 +5,15 @@ from collections.abc import Iterable
 from langchain.messages import HumanMessage
 
 from src.agent import agent
-from src.runtime import Context
+from src.runtime import build_default_context
 
 THREAD_CONFIG = {"configurable": {"thread_id": "demo-thread"}}
-DEMO_CONTEXT = Context(user_id="1")
+DEMO_CONTEXT = build_default_context(
+    user_id="1",
+    thread_id="demo-thread",
+    workspace_id="local-demo",
+    metadata={"entrypoint": "main.py"},
+)
 
 
 def run_demo() -> None:

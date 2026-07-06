@@ -9,8 +9,15 @@ from src.tools.registry import register_tool
 @tool
 def inspect_runtime_context(runtime: ToolRuntime[Context]) -> str:
     """Inspect the runtime context passed into the current tool call."""
-    user_id = runtime.context.user_id
-    return f"Runtime context is connected. user_id={user_id}"
+    context = runtime.context
+    return (
+        "Runtime context is connected. "
+        f"user_id={context.user_id} | "
+        f"thread_id={context.thread_id or 'not-set'} | "
+        f"locale={context.locale} | "
+        f"timezone={context.timezone} | "
+        f"environment={context.environment}"
+    )
 
 
 @tool
