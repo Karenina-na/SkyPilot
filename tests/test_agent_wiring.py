@@ -2,7 +2,7 @@ from langchain.agents.middleware import SummarizationMiddleware
 
 from src.agent import middleware, store
 from src.memory import MemoryMiddleware
-from src.middleware.skill import SkillMiddleware
+from src.skills import SkillMiddleware
 
 
 def test_agent_middleware_is_flat_and_includes_skills_and_memory():

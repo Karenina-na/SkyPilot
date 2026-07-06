@@ -5,9 +5,10 @@ from langchain_openai import ChatOpenAI
 
 from src.config import load_settings
 from src.memory import build_checkpointer, build_memory_middleware, build_store
-from src.middleware import build_skill_middleware, build_summarization_middleware
 from src.prompt import build_system_prompt
 from src.runtime import Context
+from src.skills import build_skill_middleware
+from src.summarization import build_summarization_middleware
 from src.tools import get_tools
 
 settings = load_settings()

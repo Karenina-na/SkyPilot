@@ -8,7 +8,8 @@ from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResp
 from langchain.messages import SystemMessage
 from langchain.tools import tool
 
-from src.skills import SkillCatalog, load_skills_from_dir
+from src.skills.catalog import SkillCatalog
+from src.skills.loader import load_skills_from_dir
 from src.skills.schema import SkillDescriptor
 
 DEFAULT_SKILLS_ROOT = Path("skills")
@@ -24,7 +25,9 @@ class SkillMiddleware(AgentMiddleware):
         skills: Sequence[SkillDescriptor] | None = None,
     ) -> None:
         self.skills_root = skills_root
-        self.skills = list(skills if skills is not None else load_skills_from_dir(skills_root))
+        self.skills = list(
+            skills if skills is not None else load_skills_from_dir(skills_root)
+        )
         self.catalog = SkillCatalog(self.skills)
         self.tools = self._build_tools()
 

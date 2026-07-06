@@ -2,7 +2,7 @@ from langchain.agents.middleware import SummarizationMiddleware
 from langchain_openai import ChatOpenAI
 
 from src.config.schema import SummarizationSettings, WindowClauseSettings
-from src.middleware import build_summarization_middleware
+from src.summarization import build_summarization_middleware
 
 
 def _main_model():

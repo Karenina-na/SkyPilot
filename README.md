@@ -11,6 +11,8 @@ skill middleware, and a registry-based tool loading system.
 - `src/config/` - loads YAML configuration.
 - `src/runtime.py` - defines runtime context passed into tools.
 - `src/memory/` - builds LangGraph checkpointers, stores, and memory middleware.
+- `src/skills/` - loads filesystem-backed skills and exposes skill middleware.
+- `src/summarization/` - builds conversation summarization middleware.
 - `src/prompt/` - builds system prompts from independent layers.
 - `src/tools/` - registry-based tool package.
 

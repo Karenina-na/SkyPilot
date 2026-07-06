@@ -4,7 +4,7 @@ from langchain.agents.middleware import ModelRequest, ModelResponse
 from langchain.messages import AIMessage
 from langchain_openai import ChatOpenAI
 
-from src.middleware.skill import SkillMiddleware
+from src.skills import SkillMiddleware
 
 
 def _model():
