@@ -145,6 +145,18 @@ Core events:
 | `tool_call_start` | Tool call begins | `tool_name`, `argument_keys`, runtime ids |
 | `tool_call_end` | Tool call completes | `duration_ms`, `status`, `tool_name`, runtime ids |
 | `tool_call_error` | Tool call raises | `duration_ms`, `error_type`, `tool_name`, runtime ids |
+| `memory_write` | Memory value is saved | `memory_key`, runtime ids |
+| `memory_read` | Memory values are recalled | `memory_count`, runtime ids |
+| `memory_disabled` | Memory tool runs without a store | `operation`, runtime ids |
+| `skill_loaded` | Skill instructions are loaded | `skill_name`, runtime ids |
+| `skill_file_listed` | Skill support files are listed | `skill_name`, `file_count`, runtime ids |
+| `skill_file_read` | Skill support file is read | `skill_name`, `relative_path`, runtime ids |
+| `skill_file_rejected` | Skill support file read is rejected | `skill_name`, `relative_path`, `reason`, runtime ids |
+| `skill_lookup_failed` | Requested skill is not registered | `skill_name`, runtime ids |
+
+The logging layer remains intentionally lightweight in v1: it uses stdlib
+logging only and does not require LangSmith, OpenTelemetry, or a remote
+collector.
 
 ### Summarization
 

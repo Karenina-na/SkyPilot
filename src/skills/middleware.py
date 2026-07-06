@@ -6,8 +6,9 @@ from typing import Any
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
 from langchain.messages import SystemMessage
-from langchain.tools import tool
+from langchain.tools import ToolRuntime, tool
 
+from src.runtime import Context
 from src.skills.catalog import SkillCatalog
 from src.skills.loader import load_skills_from_dir
 from src.skills.schema import SkillDescriptor
@@ -68,19 +69,27 @@ class SkillMiddleware(AgentMiddleware):
 
     def _build_tools(self) -> list[Any]:
         @tool
-        def load_skill(skill_name: str) -> str:
+        def load_skill(skill_name: str, runtime: ToolRuntime[Context]) -> str:
             """Load the full SKILL.md content for a registered skill."""
-            return self.catalog.load_skill(skill_name)
+            return self.catalog.load_skill(skill_name, context=runtime.context)
 
         @tool
-        def list_skill_files(skill_name: str) -> str:
+        def list_skill_files(skill_name: str, runtime: ToolRuntime[Context]) -> str:
             """List readable support files for a registered skill."""
-            return self.catalog.list_skill_files(skill_name)
+            return self.catalog.list_skill_files(skill_name, context=runtime.context)
 
         @tool
-        def read_skill_file(skill_name: str, relative_path: str) -> str:
+        def read_skill_file(
+            skill_name: str,
+            relative_path: str,
+            runtime: ToolRuntime[Context],
+        ) -> str:
             """Read a support file from a registered skill directory."""
-            return self.catalog.read_skill_file(skill_name, relative_path)
+            return self.catalog.read_skill_file(
+                skill_name,
+                relative_path,
+                context=runtime.context,
+            )
 
         return [load_skill, list_skill_files, read_skill_file]
 

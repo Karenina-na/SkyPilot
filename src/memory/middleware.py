@@ -7,6 +7,7 @@ from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResp
 from langchain.messages import SystemMessage
 from langchain.tools import ToolRuntime, tool
 
+from src.observability.events import log_event
 from src.runtime import Context
 
 
@@ -59,21 +60,41 @@ class MemoryMiddleware(AgentMiddleware):
         ) -> str:
             """Remember a stable user fact in the configured LangGraph store."""
             if runtime.store is None:
+                log_event(
+                    "memory_disabled",
+                    context=runtime.context,
+                    operation="write",
+                )
                 return "Memory store is disabled; nothing was saved."
 
             normalized_key = _normalize_key(key)
             namespace = _user_memory_namespace(runtime.context)
             runtime.store.put(namespace, normalized_key, {"value": value})
+            log_event(
+                "memory_write",
+                context=runtime.context,
+                memory_key=normalized_key,
+            )
             return f"Saved memory: {normalized_key}"
 
         @tool
         def recall_user_facts(runtime: ToolRuntime[Context]) -> str:
             """Recall saved user facts from the configured LangGraph store."""
             if runtime.store is None:
+                log_event(
+                    "memory_disabled",
+                    context=runtime.context,
+                    operation="read",
+                )
                 return "Memory store is disabled; no memories are available."
 
             namespace = _user_memory_namespace(runtime.context)
             memories = runtime.store.search(namespace, limit=20)
+            log_event(
+                "memory_read",
+                context=runtime.context,
+                memory_count=len(memories),
+            )
             if not memories:
                 return "No saved memories for this user."
 

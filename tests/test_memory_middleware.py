@@ -4,7 +4,9 @@ from langchain.tools import ToolRuntime
 from langchain_openai import ChatOpenAI
 from langgraph.store.memory import InMemoryStore
 
+from src.config import LoggingSettings
 from src.memory import MemoryMiddleware
+from src.observability.logging import configure_logging
 from src.runtime import Context
 
 
@@ -75,6 +77,34 @@ def test_memory_tools_write_and_read_langgraph_store():
     assert "- preferred_language: 中文" in recalled
 
 
+def test_memory_tools_log_write_and_read_without_memory_value(capsys):
+    configure_logging(
+        LoggingSettings(enabled=True, level="INFO", format="text", redact=True)
+    )
+    store = InMemoryStore()
+    runtime = _runtime(store)
+    middleware = MemoryMiddleware()
+    tools = {tool.name: tool for tool in middleware.tools}
+
+    saved = tools["remember_user_fact"].invoke(
+        {
+            "key": "Preferred Language",
+            "value": "中文",
+            "runtime": runtime,
+        }
+    )
+    recalled = tools["recall_user_facts"].invoke({"runtime": runtime})
+
+    captured = capsys.readouterr()
+    assert saved == "Saved memory: preferred_language"
+    assert "- preferred_language: 中文" in recalled
+    assert "event=memory_write" in captured.err
+    assert "memory_key=preferred_language" in captured.err
+    assert "event=memory_read" in captured.err
+    assert "memory_count=1" in captured.err
+    assert "中文" not in captured.err
+
+
 def test_memory_tools_handle_disabled_store():
     runtime = _runtime(None)
     middleware = MemoryMiddleware()
@@ -91,3 +121,27 @@ def test_memory_tools_handle_disabled_store():
 
     assert saved == "Memory store is disabled; nothing was saved."
     assert recalled == "Memory store is disabled; no memories are available."
+
+
+def test_memory_tools_log_disabled_store_operations(capsys):
+    configure_logging(
+        LoggingSettings(enabled=True, level="INFO", format="text", redact=True)
+    )
+    runtime = _runtime(None)
+    middleware = MemoryMiddleware()
+    tools = {tool.name: tool for tool in middleware.tools}
+
+    tools["remember_user_fact"].invoke(
+        {
+            "key": "preferred_language",
+            "value": "中文",
+            "runtime": runtime,
+        }
+    )
+    tools["recall_user_facts"].invoke({"runtime": runtime})
+
+    captured = capsys.readouterr()
+    assert "event=memory_disabled" in captured.err
+    assert "operation=write" in captured.err
+    assert "operation=read" in captured.err
+    assert "中文" not in captured.err
