@@ -4,7 +4,7 @@ from src.tools import get_tools
 def test_get_tools_discovers_registered_tools():
     tool_names = {tool.name for tool in get_tools()}
 
-    assert tool_names == {"get_user_location", "get_weather_for_location"}
+    assert tool_names == {"inspect_runtime_context", "create_demo_task"}
 
 
 def test_get_tools_returns_copy():
@@ -12,6 +12,6 @@ def test_get_tools_returns_copy():
     tools.clear()
 
     assert {tool.name for tool in get_tools()} == {
-        "get_user_location",
-        "get_weather_for_location",
+        "inspect_runtime_context",
+        "create_demo_task",
     }

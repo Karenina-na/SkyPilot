@@ -1,8 +1,8 @@
 # SkyPilot
 
-SkyPilot is a small LangChain/LangGraph weather-agent prototype. It uses an
+SkyPilot is a small generic LangChain/LangGraph agent demo. It uses an
 OpenAI-compatible local chat model, a runtime context object, LangGraph memory,
-and a registry-based tool loading system.
+skill middleware, and a registry-based tool loading system.
 
 ## Project Layout
 
