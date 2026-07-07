@@ -1,6 +1,14 @@
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessageChunk, HumanMessage
 
-from main import _has_reasoning_block, _message_text, _reasoning_text, run_cli
+from src.runtime import build_default_context
+
+from main import (
+    _has_reasoning_block,
+    _message_text,
+    _reasoning_text,
+    run_cli,
+    run_agent_reply,
+)
 
 
 def test_reasoning_text_reads_standard_content_blocks():
@@ -61,19 +69,43 @@ def test_run_cli_exits_on_exit_command(monkeypatch, capsys):
     assert "Bye." in captured.out
 
 
-def test_run_cli_skips_blank_input_then_streams_reply(monkeypatch, capsys):
+def test_run_cli_skips_blank_input_then_runs_reply(monkeypatch, capsys):
     inputs = iter(["", "hello", "q"])
-    streamed: list[str] = []
+    replies: list[str] = []
 
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
     monkeypatch.setattr(
-        "main.stream_agent_reply",
-        lambda user_text, *, config, context: streamed.append(user_text),
+        "main.run_agent_reply",
+        lambda user_text, *, config, context: replies.append(user_text),
     )
 
     run_cli()
 
     captured = capsys.readouterr()
-    assert streamed == ["hello"]
+    assert replies == ["hello"]
     assert "Agent: " in captured.out
     assert "Bye." in captured.out
+
+
+def test_run_agent_reply_uses_invoke_instead_of_stream(monkeypatch, capsys):
+    calls: list[tuple[str, dict]] = []
+
+    class FakeAgent:
+        def invoke(self, agent_input, *, config, context):
+            calls.append(("invoke", agent_input))
+            return {"messages": [AIMessageChunk(content="非流式回复")]}
+
+        def stream(self, *args, **kwargs):
+            raise AssertionError("stream should not be used")
+
+    monkeypatch.setattr("main.agent", FakeAgent())
+
+    run_agent_reply(
+        "你好",
+        config={"configurable": {"thread_id": "1"}},
+        context=build_default_context(user_id="test-user"),
+    )
+
+    captured = capsys.readouterr()
+    assert calls == [("invoke", {"messages": [HumanMessage(content="你好")]})]
+    assert "非流式回复" in captured.out

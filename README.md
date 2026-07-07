@@ -1,6 +1,6 @@
-# SkyPilot
+# Pilot
 
-SkyPilot is a small generic LangChain/LangGraph agent demo. It uses an
+Pilot is a small generic LangChain/LangGraph agent demo. It uses an
 OpenAI-compatible local chat model, a runtime context object, LangGraph memory,
 skill middleware, and a registry-based tool loading system.
 
@@ -136,9 +136,9 @@ Core events:
 
 | Event | Trigger | Default fields |
 | --- | --- | --- |
-| `agent_run_start` | Agent stream/run begins | `entrypoint`, `stream_mode`, runtime ids |
-| `agent_run_end` | Agent stream/run completes | `duration_ms`, `entrypoint`, `stream_mode`, runtime ids |
-| `agent_run_error` | Agent stream/run raises | `duration_ms`, `error_type`, runtime ids |
+| `agent_run_start` | Agent run begins | `entrypoint`, `stream_mode`, runtime ids |
+| `agent_run_end` | Agent run completes | `duration_ms`, `entrypoint`, `stream_mode`, runtime ids |
+| `agent_run_error` | Agent run raises | `duration_ms`, `error_type`, runtime ids |
 | `model_call_start` | Model call begins | `message_count`, `tool_count`, runtime ids |
 | `model_call_end` | Model call completes | `duration_ms`, `message_count`, runtime ids |
 | `model_call_error` | Model call raises | `duration_ms`, `error_type`, runtime ids |
@@ -188,8 +188,9 @@ Start an interactive CLI chat session:
 ```
 
 Type `/exit`, `/quit`, `exit`, `quit`, or `q` to leave the session. The CLI
-uses `agent.default_thread_id` as its LangGraph thread id, streams assistant
-text to stdout, and writes observability logs to the configured log directory.
+uses `agent.default_thread_id` as its LangGraph thread id, invokes the agent
+without SSE streaming, and writes observability logs to the configured log
+directory.
 
 ## Verify
 

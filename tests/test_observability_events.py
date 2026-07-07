@@ -3,7 +3,11 @@ import pytest
 from tests.log_helpers import logging_settings_for, read_debug_events, read_log
 
 from src.config import FullPayloadLoggingSettings
-from src.observability import observe_agent_run, observe_agent_stream
+from src.observability import (
+    observe_agent_invoke,
+    observe_agent_run,
+    observe_agent_stream,
+)
 from src.observability.logging import configure_logging
 from src.runtime import Context
 
@@ -123,3 +127,37 @@ def test_observe_agent_stream_can_disable_chunk_payloads(tmp_path):
 
     assert items == ["first"]
     assert read_log(tmp_path, "DEBUG") == ""
+
+
+def test_observe_agent_invoke_logs_input_and_result_payloads(tmp_path, capsys):
+    configure_logging(logging_settings_for(tmp_path))
+    context = Context(user_id="u1", request_id="request-1", run_id="run-1")
+    agent_input = {"messages": [{"role": "user", "content": "hello"}]}
+
+    result = observe_agent_invoke(
+        lambda: {"messages": [{"role": "assistant", "content": "hi"}]},
+        context,
+        entrypoint="test.invoke",
+        execution_mode="invoke",
+        agent_input=agent_input,
+    )
+
+    captured = capsys.readouterr()
+    info_log = read_log(tmp_path, "INFO")
+    debug_events = read_debug_events(tmp_path)
+    assert captured.err == ""
+    assert result == {"messages": [{"role": "assistant", "content": "hi"}]}
+    assert "event=agent_run_start" in info_log
+    assert "event=agent_run_end" in info_log
+    assert "entrypoint=test.invoke" in info_log
+    assert "stream_mode=invoke" in info_log
+    assert [event["event"] for event in debug_events] == [
+        "agent_input_payload",
+        "agent_invoke_result_payload",
+    ]
+    assert debug_events[0]["kind"] == "agent"
+    assert debug_events[0]["phase"] == "input"
+    assert debug_events[0]["input"]["messages"][0]["content"] == "hello"
+    assert debug_events[1]["kind"] == "agent"
+    assert debug_events[1]["phase"] == "result"
+    assert debug_events[1]["result"]["messages"][0]["content"] == "hi"

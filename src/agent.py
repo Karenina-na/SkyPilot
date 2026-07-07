@@ -20,8 +20,8 @@ model = ChatOpenAI(
     api_key=settings.llm.api_key,
     model=settings.llm.model,
     temperature=settings.llm.temperature,
-    output_version="responses/v1",
-    use_responses_api=True,
+    disable_streaming=True,
+    use_responses_api=False,
     profile={"max_input_tokens": settings.llm.context_window_tokens},
 )
 

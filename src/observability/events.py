@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from time import perf_counter
 from typing import Any
@@ -130,6 +130,56 @@ def observe_agent_stream(
             yield item
 
 
+def observe_agent_invoke(
+    invoke: Callable[[], Any],
+    context: Context,
+    *,
+    entrypoint: str,
+    execution_mode: str,
+    redact: bool = True,
+    full_payloads: FullPayloadLoggingSettings | None = None,
+    agent_input: Any | None = None,
+) -> Any:
+    """Run an agent invocation while logging lifecycle and full payloads."""
+    with observe_agent_run(
+        context,
+        entrypoint=entrypoint,
+        stream_mode=execution_mode,
+        redact=redact,
+    ):
+        if agent_input is not None:
+            log_full_payload(
+                "agent_input_payload",
+                {
+                    "entrypoint": entrypoint,
+                    "execution_mode": execution_mode,
+                    "input": agent_input,
+                    "user_messages": _user_messages(agent_input),
+                },
+                context=context,
+                settings=full_payloads,
+                kind="agent",
+                phase="input",
+                call_id=f"{entrypoint}:{execution_mode}:input",
+            )
+
+        result = invoke()
+        log_full_payload(
+            "agent_invoke_result_payload",
+            {
+                "entrypoint": entrypoint,
+                "execution_mode": execution_mode,
+                "result": result,
+            },
+            context=context,
+            settings=full_payloads,
+            kind="agent",
+            phase="result",
+            call_id=f"{entrypoint}:{execution_mode}:result",
+        )
+        return result
+
+
 def _user_messages(agent_input: Any) -> list[Any]:
     if not isinstance(agent_input, dict):
         return []
@@ -169,4 +219,9 @@ def _duration_ms(started_at: float) -> int:
     return round((perf_counter() - started_at) * 1000)
 
 
-__all__ = ["log_event", "observe_agent_run", "observe_agent_stream"]
+__all__ = [
+    "log_event",
+    "observe_agent_invoke",
+    "observe_agent_run",
+    "observe_agent_stream",
+]

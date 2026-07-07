@@ -7,14 +7,14 @@ from collections.abc import Iterable
 from langchain.messages import HumanMessage
 
 from src.agent import agent, settings
-from src.observability import observe_agent_stream
+from src.observability import observe_agent_invoke
 from src.runtime import build_default_context
 
 EXIT_COMMANDS = {"/exit", "/quit", "exit", "quit", "q"}
 
 
 def run_cli() -> None:
-    """Run a simple REPL that streams agent responses."""
+    """Run a simple REPL that invokes the agent without SSE streaming."""
     thread_id = settings.agent.default_thread_id
     config = {"configurable": {"thread_id": thread_id}}
     context = build_default_context(
@@ -39,30 +39,38 @@ def run_cli() -> None:
             return
 
         print("Agent: ", end="", flush=True)
-        stream_agent_reply(user_text, config=config, context=context)
+        run_agent_reply(user_text, config=config, context=context)
         print()
 
 
-def stream_agent_reply(user_text: str, *, config: dict, context: object) -> None:
-    """Stream one user turn through the agent and print assistant text."""
+def run_agent_reply(user_text: str, *, config: dict, context: object) -> None:
+    """Run one user turn through the agent without streaming."""
     agent_input = {"messages": [HumanMessage(content=user_text)]}
-    for message_chunk, _metadata in observe_agent_stream(
-        agent.stream(
+    result = observe_agent_invoke(
+        lambda: agent.invoke(
             agent_input,
             config=config,
             context=context,
-            stream_mode="messages",
         ),
         context,
         entrypoint="main.run_cli",
-        stream_mode="messages",
+        execution_mode="invoke",
         redact=settings.observability.logging.redact,
         full_payloads=settings.observability.logging.full_payloads,
         agent_input=agent_input,
-    ):
-        content = _message_text(message_chunk)
-        if content:
-            print(content, end="", flush=True)
+    )
+
+    content = _agent_result_text(result)
+    if content:
+        print(content, end="", flush=True)
+
+
+def _agent_result_text(result: object) -> str:
+    if isinstance(result, dict):
+        messages = result.get("messages")
+        if isinstance(messages, list) and messages:
+            return _message_text(messages[-1])
+    return _message_text(result)
 
 
 def _message_text(message_chunk: object) -> str:
