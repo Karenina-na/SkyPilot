@@ -7,6 +7,7 @@ import yaml
 
 from src.config.schema import (
     AgentSettings,
+    FullPayloadLoggingSettings,
     LLMSettings,
     LoggingSettings,
     MemoryCheckpointerSettings,
@@ -39,6 +40,7 @@ def load_settings(config_path: str | Path = DEFAULT_CONFIG_PATH) -> Settings:
     store_config = _require_mapping(memory_config, "store")
     observability_config = _require_mapping(raw_config, "observability")
     logging_config = _require_mapping(observability_config, "logging")
+    full_payload_config = _optional_mapping(logging_config, "full_payloads")
     summarization_config = _require_mapping(raw_config, "summarization")
 
     return Settings(
@@ -68,6 +70,31 @@ def load_settings(config_path: str | Path = DEFAULT_CONFIG_PATH) -> Settings:
                 level=_get_logging_level(logging_config, "level"),
                 format=_get_logging_format(logging_config, "format"),
                 redact=_get_bool(logging_config, "redact"),
+                directory=_get_str_default(logging_config, "directory", "./logs"),
+                full_payloads=FullPayloadLoggingSettings(
+                    enabled=_get_bool_default(full_payload_config, "enabled", True),
+                    redact=_get_bool_default(full_payload_config, "redact", False),
+                    include_prompts=_get_bool_default(
+                        full_payload_config,
+                        "include_prompts",
+                        True,
+                    ),
+                    include_messages=_get_bool_default(
+                        full_payload_config,
+                        "include_messages",
+                        True,
+                    ),
+                    include_tools=_get_bool_default(
+                        full_payload_config,
+                        "include_tools",
+                        True,
+                    ),
+                    include_outputs=_get_bool_default(
+                        full_payload_config,
+                        "include_outputs",
+                        True,
+                    ),
+                ),
             ),
         ),
         summarization=SummarizationSettings(
@@ -112,10 +139,26 @@ def _require_mapping(config: dict[str, Any], key: str) -> dict[str, Any]:
     return value
 
 
+def _optional_mapping(config: dict[str, Any], key: str) -> dict[str, Any]:
+    value = config.get(key)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"Config section '{key}' must be a mapping")
+    return value
+
+
 def _get_str(config: dict[str, Any], key: str) -> str:
     value = config.get(key)
     if value is None:
         raise ValueError(f"Missing required config value: {key}")
+    return str(value)
+
+
+def _get_str_default(config: dict[str, Any], key: str, default: str) -> str:
+    value = config.get(key)
+    if value is None:
+        return default
     return str(value)
 
 
@@ -153,6 +196,15 @@ def _get_bool(config: dict[str, Any], key: str) -> bool:
     value = config.get(key)
     if value is None:
         raise ValueError(f"Missing required config value: {key}")
+    if isinstance(value, bool):
+        return value
+    raise ValueError(f"Config value '{key}' must be a bool")
+
+
+def _get_bool_default(config: dict[str, Any], key: str, default: bool) -> bool:
+    value = config.get(key)
+    if value is None:
+        return default
     if isinstance(value, bool):
         return value
     raise ValueError(f"Config value '{key}' must be a bool")

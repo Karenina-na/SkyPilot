@@ -2,7 +2,7 @@ llm:
   provider: openai_compatible
   base_url: "http://127.0.0.1:1234/v1"
   api_key: "not-needed"
-  model: "google/gemma-4-e2b"
+  model: "qwen3.5-4b-mlx"
   temperature: 0.3
   context_window_tokens: 8192
 
@@ -22,6 +22,14 @@ observability:
     level: "INFO"
     format: "text"
     redact: true
+    directory: "./logs"
+    full_payloads:
+      enabled: true
+      redact: false
+      include_prompts: true
+      include_messages: true
+      include_tools: true
+      include_outputs: true
 
 summarization:
   enabled: true

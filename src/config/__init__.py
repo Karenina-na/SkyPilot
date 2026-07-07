@@ -3,6 +3,7 @@
 from src.config.loader import load_settings
 from src.config.schema import (
     AgentSettings,
+    FullPayloadLoggingSettings,
     LLMSettings,
     LoggingSettings,
     MemoryCheckpointerSettings,
@@ -16,6 +17,7 @@ from src.config.schema import (
 
 __all__ = [
     "AgentSettings",
+    "FullPayloadLoggingSettings",
     "LLMSettings",
     "LoggingSettings",
     "MemoryCheckpointerSettings",

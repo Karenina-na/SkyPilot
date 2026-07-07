@@ -4,7 +4,8 @@ from langchain.tools import ToolRuntime
 from langchain_openai import ChatOpenAI
 from langgraph.store.memory import InMemoryStore
 
-from src.config import LoggingSettings
+from tests.log_helpers import logging_settings_for, read_log
+
 from src.memory import MemoryMiddleware
 from src.observability.logging import configure_logging
 from src.runtime import Context
@@ -77,10 +78,8 @@ def test_memory_tools_write_and_read_langgraph_store():
     assert "- preferred_language: 中文" in recalled
 
 
-def test_memory_tools_log_write_and_read_without_memory_value(capsys):
-    configure_logging(
-        LoggingSettings(enabled=True, level="INFO", format="text", redact=True)
-    )
+def test_memory_tools_log_write_and_read_without_memory_value(tmp_path, capsys):
+    configure_logging(logging_settings_for(tmp_path))
     store = InMemoryStore()
     runtime = _runtime(store)
     middleware = MemoryMiddleware()
@@ -96,13 +95,15 @@ def test_memory_tools_log_write_and_read_without_memory_value(capsys):
     recalled = tools["recall_user_facts"].invoke({"runtime": runtime})
 
     captured = capsys.readouterr()
+    info_log = read_log(tmp_path, "INFO")
     assert saved == "Saved memory: preferred_language"
     assert "- preferred_language: 中文" in recalled
-    assert "event=memory_write" in captured.err
-    assert "memory_key=preferred_language" in captured.err
-    assert "event=memory_read" in captured.err
-    assert "memory_count=1" in captured.err
-    assert "中文" not in captured.err
+    assert captured.err == ""
+    assert "event=memory_write" in info_log
+    assert "memory_key=preferred_language" in info_log
+    assert "event=memory_read" in info_log
+    assert "memory_count=1" in info_log
+    assert "中文" not in info_log
 
 
 def test_memory_tools_handle_disabled_store():
@@ -123,10 +124,8 @@ def test_memory_tools_handle_disabled_store():
     assert recalled == "Memory store is disabled; no memories are available."
 
 
-def test_memory_tools_log_disabled_store_operations(capsys):
-    configure_logging(
-        LoggingSettings(enabled=True, level="INFO", format="text", redact=True)
-    )
+def test_memory_tools_log_disabled_store_operations(tmp_path, capsys):
+    configure_logging(logging_settings_for(tmp_path))
     runtime = _runtime(None)
     middleware = MemoryMiddleware()
     tools = {tool.name: tool for tool in middleware.tools}
@@ -141,7 +140,9 @@ def test_memory_tools_log_disabled_store_operations(capsys):
     tools["recall_user_facts"].invoke({"runtime": runtime})
 
     captured = capsys.readouterr()
-    assert "event=memory_disabled" in captured.err
-    assert "operation=write" in captured.err
-    assert "operation=read" in captured.err
-    assert "中文" not in captured.err
+    info_log = read_log(tmp_path, "INFO")
+    assert captured.err == ""
+    assert "event=memory_disabled" in info_log
+    assert "operation=write" in info_log
+    assert "operation=read" in info_log
+    assert "中文" not in info_log

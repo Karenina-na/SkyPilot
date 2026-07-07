@@ -29,7 +29,10 @@ tools = get_tools()
 checkpointer = build_checkpointer(settings.memory.checkpointer)
 store = build_store(settings.memory.store)
 middleware = [
-    build_observability_middleware(redact=settings.observability.logging.redact),
+    build_observability_middleware(
+        redact=settings.observability.logging.redact,
+        full_payloads=settings.observability.logging.full_payloads,
+    ),
     *build_summarization_middleware(
         settings=settings.summarization,
         main_model=model,

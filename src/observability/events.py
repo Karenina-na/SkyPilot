@@ -8,7 +8,8 @@ from contextlib import contextmanager
 from time import perf_counter
 from typing import Any
 
-from src.observability.logging import get_logger, sanitize_fields
+from src.config import FullPayloadLoggingSettings
+from src.observability.logging import get_logger, log_full_payload, sanitize_fields
 from src.runtime import Context
 
 
@@ -85,6 +86,8 @@ def observe_agent_stream(
     entrypoint: str,
     stream_mode: str,
     redact: bool = True,
+    full_payloads: FullPayloadLoggingSettings | None = None,
+    agent_input: Any | None = None,
 ) -> Iterator[Any]:
     """Yield an agent stream while logging run lifecycle events."""
     with observe_agent_run(
@@ -93,7 +96,58 @@ def observe_agent_stream(
         stream_mode=stream_mode,
         redact=redact,
     ):
-        yield from stream
+        if agent_input is not None:
+            log_full_payload(
+                "agent_input_payload",
+                {
+                    "entrypoint": entrypoint,
+                    "stream_mode": stream_mode,
+                    "input": agent_input,
+                    "user_messages": _user_messages(agent_input),
+                },
+                context=context,
+                settings=full_payloads,
+                kind="agent",
+                phase="input",
+                call_id=f"{entrypoint}:{stream_mode}:input",
+            )
+
+        for index, item in enumerate(stream):
+            log_full_payload(
+                "agent_stream_chunk_payload",
+                {
+                    "entrypoint": entrypoint,
+                    "stream_mode": stream_mode,
+                    "chunk_index": index,
+                    "chunk": item,
+                },
+                context=context,
+                settings=full_payloads,
+                kind="stream",
+                phase="chunk",
+                call_id=f"{entrypoint}:{stream_mode}:chunk:{index}",
+            )
+            yield item
+
+
+def _user_messages(agent_input: Any) -> list[Any]:
+    if not isinstance(agent_input, dict):
+        return []
+
+    messages = agent_input.get("messages")
+    if not isinstance(messages, list):
+        return []
+
+    return [
+        message
+        for message in messages
+        if getattr(message, "type", None) == "human"
+        or getattr(message, "role", None) == "user"
+        or (
+            isinstance(message, dict)
+            and message.get("role") in {"user", "human"}
+        )
+    ]
 
 
 def _context_fields(context: Context | None) -> dict[str, Any]:

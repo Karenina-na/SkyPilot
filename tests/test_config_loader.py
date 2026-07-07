@@ -69,6 +69,13 @@ summarization:
     assert settings.observability.logging.level == "DEBUG"
     assert settings.observability.logging.format == "json"
     assert settings.observability.logging.redact is False
+    assert settings.observability.logging.directory == "./logs"
+    assert settings.observability.logging.full_payloads.enabled is True
+    assert settings.observability.logging.full_payloads.redact is False
+    assert settings.observability.logging.full_payloads.include_prompts is True
+    assert settings.observability.logging.full_payloads.include_messages is True
+    assert settings.observability.logging.full_payloads.include_tools is True
+    assert settings.observability.logging.full_payloads.include_outputs is True
 
 
 def test_load_settings_falls_back_to_example_config():
@@ -76,7 +83,7 @@ def test_load_settings_falls_back_to_example_config():
 
     assert settings.llm.base_url == "http://127.0.0.1:1234/v1"
     assert settings.llm.api_key == "not-needed"
-    assert settings.llm.model == "google/gemma-4-e2b"
+    assert settings.llm.model == "qwen3.5-4b-mlx"
     assert settings.llm.temperature == 0.3
     assert settings.llm.context_window_tokens == 8192
     assert settings.agent.default_thread_id == "1"
@@ -87,6 +94,13 @@ def test_load_settings_falls_back_to_example_config():
     assert settings.observability.logging.level == "INFO"
     assert settings.observability.logging.format == "text"
     assert settings.observability.logging.redact is True
+    assert settings.observability.logging.directory == "./logs"
+    assert settings.observability.logging.full_payloads.enabled is True
+    assert settings.observability.logging.full_payloads.redact is False
+    assert settings.observability.logging.full_payloads.include_prompts is True
+    assert settings.observability.logging.full_payloads.include_messages is True
+    assert settings.observability.logging.full_payloads.include_tools is True
+    assert settings.observability.logging.full_payloads.include_outputs is True
     assert settings.summarization.enabled is True
     assert settings.summarization.trigger.type == "fraction"
     assert settings.summarization.trigger.value == 0.8
@@ -112,6 +126,8 @@ llm:
     assert settings.memory.store.enabled is True
     assert settings.memory.store.type == "in_memory"
     assert settings.observability.logging.level == "INFO"
+    assert settings.observability.logging.directory == "./logs"
+    assert settings.observability.logging.full_payloads.enabled is True
     assert settings.summarization.trigger.type == "fraction"
     assert settings.summarization.trigger.value == 0.8
 

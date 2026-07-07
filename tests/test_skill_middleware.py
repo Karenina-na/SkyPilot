@@ -5,7 +5,8 @@ from langchain.messages import AIMessage
 from langchain.tools import ToolRuntime
 from langchain_openai import ChatOpenAI
 
-from src.config import LoggingSettings
+from tests.log_helpers import logging_settings_for, read_log
+
 from src.observability.logging import configure_logging
 from src.runtime import Context
 from src.skills import SkillMiddleware
@@ -114,9 +115,7 @@ def test_skill_tools_log_lifecycle_without_skill_content(
     tmp_path: Path,
     capsys,
 ):
-    configure_logging(
-        LoggingSettings(enabled=True, level="INFO", format="text", redact=True)
-    )
+    configure_logging(logging_settings_for(tmp_path))
     _write_skill(tmp_path)
     middleware = SkillMiddleware(skills_root=tmp_path)
     tools = {tool.name: tool for tool in middleware.tools}
@@ -137,22 +136,22 @@ def test_skill_tools_log_lifecycle_without_skill_content(
     )
 
     captured = capsys.readouterr()
+    info_log = read_log(tmp_path, "INFO")
     assert "Full instructions stay out of the catalog." in loaded
     assert listed == "references/style.md"
     assert read == "Use short sentences."
-    assert "event=skill_loaded" in captured.err
-    assert "event=skill_file_listed" in captured.err
-    assert "file_count=1" in captured.err
-    assert "event=skill_file_read" in captured.err
-    assert "relative_path=references/style.md" in captured.err
-    assert "Full instructions stay out of the catalog." not in captured.err
-    assert "Use short sentences." not in captured.err
+    assert captured.err == ""
+    assert "event=skill_loaded" in info_log
+    assert "event=skill_file_listed" in info_log
+    assert "file_count=1" in info_log
+    assert "event=skill_file_read" in info_log
+    assert "relative_path=references/style.md" in info_log
+    assert "Full instructions stay out of the catalog." not in info_log
+    assert "Use short sentences." not in info_log
 
 
 def test_skill_tools_log_rejected_file_reads(tmp_path: Path, capsys):
-    configure_logging(
-        LoggingSettings(enabled=True, level="INFO", format="text", redact=True)
-    )
+    configure_logging(logging_settings_for(tmp_path))
     _write_skill(tmp_path)
     middleware = SkillMiddleware(skills_root=tmp_path)
     tools = {tool.name: tool for tool in middleware.tools}
@@ -166,16 +165,16 @@ def test_skill_tools_log_rejected_file_reads(tmp_path: Path, capsys):
     )
 
     captured = capsys.readouterr()
+    info_log = read_log(tmp_path, "INFO")
     assert "path must stay inside the skill directory" in result
-    assert "event=skill_file_rejected" in captured.err
-    assert "relative_path=../secret.txt" in captured.err
-    assert "reason=path_escape" in captured.err
+    assert captured.err == ""
+    assert "event=skill_file_rejected" in info_log
+    assert "relative_path=../secret.txt" in info_log
+    assert "reason=path_escape" in info_log
 
 
 def test_skill_tools_log_missing_skill_lookup(tmp_path: Path, capsys):
-    configure_logging(
-        LoggingSettings(enabled=True, level="INFO", format="text", redact=True)
-    )
+    configure_logging(logging_settings_for(tmp_path))
     middleware = SkillMiddleware(skills_root=tmp_path)
     tools = {tool.name: tool for tool in middleware.tools}
 
@@ -184,9 +183,11 @@ def test_skill_tools_log_missing_skill_lookup(tmp_path: Path, capsys):
     )
 
     captured = capsys.readouterr()
+    info_log = read_log(tmp_path, "INFO")
     assert result == "Skill 'missing' not found. No skills are registered."
-    assert "event=skill_lookup_failed" in captured.err
-    assert "skill_name=missing" in captured.err
+    assert captured.err == ""
+    assert "event=skill_lookup_failed" in info_log
+    assert "skill_name=missing" in info_log
 
 
 def test_skill_middleware_handles_empty_skill_root(tmp_path: Path):

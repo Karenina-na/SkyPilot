@@ -1,6 +1,6 @@
 """Typed application configuration."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 MemoryCheckpointerType = Literal["in_memory"]
@@ -42,11 +42,25 @@ class MemorySettings:
 
 
 @dataclass(frozen=True)
+class FullPayloadLoggingSettings:
+    enabled: bool = True
+    redact: bool = False
+    include_prompts: bool = True
+    include_messages: bool = True
+    include_tools: bool = True
+    include_outputs: bool = True
+
+
+@dataclass(frozen=True)
 class LoggingSettings:
     enabled: bool
     level: str
     format: LoggingFormat
     redact: bool
+    directory: str = "./logs"
+    full_payloads: FullPayloadLoggingSettings = field(
+        default_factory=FullPayloadLoggingSettings
+    )
 
 
 @dataclass(frozen=True)
