@@ -6,7 +6,7 @@ skill middleware, and a registry-based tool loading system.
 
 ## Project Layout
 
-- `main.py` - local demo entrypoint.
+- `main.py` - local interactive CLI agent entrypoint.
 - `src/agent.py` - builds the LangChain agent.
 - `src/config/` - loads YAML configuration.
 - `src/runtime.py` - defines runtime context passed into tools.
@@ -181,9 +181,15 @@ a known context window, set `llm.context_window_tokens` for the selected model.
 
 ## Run
 
+Start an interactive CLI chat session:
+
 ```bash
 .venv/bin/python main.py
 ```
+
+Type `/exit`, `/quit`, `exit`, `quit`, or `q` to leave the session. The CLI
+uses `agent.default_thread_id` as its LangGraph thread id, streams assistant
+text to stdout, and writes observability logs to the configured log directory.
 
 ## Verify
 

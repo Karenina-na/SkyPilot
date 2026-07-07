@@ -1,146 +1,68 @@
-"""Console demo for validating agent streaming and tool calls."""
+"""Simple interactive CLI for chatting with the configured agent."""
+
+from __future__ import annotations
 
 from collections.abc import Iterable
 
 from langchain.messages import HumanMessage
 
-from src.agent import agent
+from src.agent import agent, settings
 from src.observability import observe_agent_stream
 from src.runtime import build_default_context
 
-THREAD_CONFIG = {"configurable": {"thread_id": "demo-thread"}}
-DEMO_CONTEXT = build_default_context(
-    user_id="1",
-    thread_id="demo-thread",
-    request_id="demo-request",
-    run_id="demo-run",
-    workspace_id="local-demo",
-    metadata={"entrypoint": "main.py"},
-)
+EXIT_COMMANDS = {"/exit", "/quit", "exit", "quit", "q"}
 
 
-def run_demo() -> None:
-    """Run concise streaming demos against the configured agent."""
-    show_tool_call_updates()
-    print()
-    show_message_stream()
+def run_cli() -> None:
+    """Run a simple REPL that streams agent responses."""
+    thread_id = settings.agent.default_thread_id
+    config = {"configurable": {"thread_id": thread_id}}
+    context = build_default_context(
+        user_id="local-cli",
+        thread_id=thread_id,
+        workspace_id="local-cli",
+        metadata={"entrypoint": "main.py"},
+    )
 
+    print("SkyPilot CLI agent. Type /exit to quit.")
+    while True:
+        try:
+            user_text = input("\nYou: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBye.")
+            return
 
-def show_tool_call_updates() -> None:
-    """Show agent/tool execution steps without dumping full graph state."""
-    print("=== Agent 执行过程 ===\n")
-
-    for chunk in observe_agent_stream(
-        agent.stream(
-            {
-                "messages": [
-                    HumanMessage(
-                        content=(
-                            "请先检查 runtime context 是否能传入工具，"
-                            "再调用 create_demo_task 创建任务："
-                            "title='验证 agent 可以发现并调用工具'，priority='high'。"
-                        )
-                    )
-                ]
-            },
-            config=THREAD_CONFIG,
-            context=DEMO_CONTEXT,
-            stream_mode="updates",
-        ),
-        DEMO_CONTEXT,
-        entrypoint="main.show_tool_call_updates",
-        stream_mode="updates",
-    ):
-        print_update_chunk(chunk)
-
-
-def print_update_chunk(chunk: dict) -> None:
-    """Print a compact view of update-mode stream chunks."""
-    if not isinstance(chunk, dict):
-        return
-
-    for node_name, update in chunk.items():
-        if not isinstance(update, dict):
+        if not user_text:
             continue
+        if user_text.lower() in EXIT_COMMANDS:
+            print("Bye.")
+            return
 
-        for message in update.get("messages") or []:
-            if message.type == "ai" and getattr(message, "tool_calls", None):
-                tool_names = [tool_call["name"] for tool_call in message.tool_calls]
-                print(f"[{node_name}] 请求调用: {', '.join(tool_names)}")
-            elif message.type == "tool":
-                print(f"[{node_name}] 工具返回 [{message.name}]: {message.content}")
-            elif message.type == "ai" and message.content:
-                print(f"[{node_name}] 回复: {_preview(message.content)}")
+        print("Agent: ", end="", flush=True)
+        stream_agent_reply(user_text, config=config, context=context)
+        print()
 
 
-def show_message_stream() -> None:
-    """Show a short token stream, optional reasoning, and source metadata."""
-    print("=== 实时流式回复 ===\n")
-
-    first_metadata: dict | None = None
-    first_chunk_type: str | None = None
-    answer_started = False
-    reasoning_started = False
-    saw_reasoning = False
-    saw_reasoning_block = False
-    for message_chunk, metadata in observe_agent_stream(
+def stream_agent_reply(user_text: str, *, config: dict, context: object) -> None:
+    """Stream one user turn through the agent and print assistant text."""
+    agent_input = {"messages": [HumanMessage(content=user_text)]}
+    for message_chunk, _metadata in observe_agent_stream(
         agent.stream(
-            {
-                "messages": [
-                    HumanMessage(content="用一句话说明这个 agent demo 能验证什么。")
-                ]
-            },
-            config=THREAD_CONFIG,
-            context=DEMO_CONTEXT,
+            agent_input,
+            config=config,
+            context=context,
             stream_mode="messages",
         ),
-        DEMO_CONTEXT,
-        entrypoint="main.show_message_stream",
+        context,
+        entrypoint="main.run_cli",
         stream_mode="messages",
+        redact=settings.observability.logging.redact,
+        full_payloads=settings.observability.logging.full_payloads,
+        agent_input=agent_input,
     ):
-        saw_reasoning_block = saw_reasoning_block or _has_reasoning_block(
-            message_chunk
-        )
-        reasoning = _reasoning_text(message_chunk)
-        if reasoning:
-            if not reasoning_started:
-                print("思考流（provider 暴露时显示）:")
-                reasoning_started = True
-            print(reasoning, end="", flush=True)
-            saw_reasoning = True
-
         content = _message_text(message_chunk)
-        if not content:
-            continue
-
-        if not answer_started:
-            if saw_reasoning:
-                print("\n")
-            elif saw_reasoning_block:
-                print(
-                    "思考流（LangChain content_blocks 暴露时显示）: "
-                    "检测到 reasoning block，但 LangChain 未暴露 reasoning 文本。\n"
-                )
-            else:
-                print(
-                    "思考流（LangChain content_blocks 暴露时显示）: "
-                    "当前没有 reasoning。\n"
-                )
-            print("回复:")
-            answer_started = True
-
-        print(content, end="", flush=True)
-
-        if first_metadata is None:
-            first_metadata = metadata
-            first_chunk_type = type(message_chunk).__name__
-
-    print()
-    if first_metadata is not None:
-        print(
-            f"\n来源节点: {first_metadata.get('langgraph_node')}\n"
-            f"消息类型: {first_chunk_type}"
-        )
+        if content:
+            print(content, end="", flush=True)
 
 
 def _message_text(message_chunk: object) -> str:
@@ -227,10 +149,5 @@ def _reasoning_from_value(value: object) -> list[str]:
     return []
 
 
-def _preview(content: object, limit: int = 120) -> str:
-    text = _message_text(content)
-    return text if len(text) <= limit else f"{text[: limit - 3]}..."
-
-
 if __name__ == "__main__":
-    run_demo()
+    run_cli()
